@@ -22,12 +22,24 @@ jobs:
 
       - name: 外部データを取得 (curl実行)
         run: |
+          echo "Checking latest version manifest..."
+          PACKAGE_URL=$(curl -s https://launchermeta.mojang.com/mc/game/version_manifest.json | grep -o 'https://piston-meta.mojang.com/v1/packages/[^"]*' | head -n 1)
+
+          # 2. パッケージJSONの内容を一時保存（メモリ上）
+          echo "Fetching version details..."
+          VERSION_DATA=$(curl -s $PACKAGE_URL)
           # ここでcurlコマンドを実行
           # 例: APIの結果を data.json に保存
           curl -s https://launchermeta.mojang.com/mc/game/version_manifest.json -o version_manifest.json
-          
+          CLIENT_URL=$(echo "$VERSION_DATA" | grep -o 'https://piston-data.mojang.com/v1/objects/[^"]*/client.jar')
+          echo "Downloading client.jar..."
+          curl -o client.jar "$CLIENT_URL"
           # 値が変わったときにログに出す（隊員のこだわり！）
           missionLog "ACTION" "curlコマンドを実行し、version_manifest.jsonを更新しました！"
+
+      - name:
+        run: |
+          # kakkoii!
 
       - name: 変更をコミットしてPush
         run: |
