@@ -43,9 +43,11 @@ jobs:
           echo "[ACTION] curlコマンドを実行し、version_manifest.jsonを更新しました！"
           
 
-      - name:
+      - name: あんぽんたん！
         run: |
           # kakkoii!
+          PACKAGE_URL=$(curl -s https://launchermeta.mojang.com/mc/game/version_manifest.json | grep -o 'https://piston-meta.mojang.com/v1/packages/[^"]*' | head -n 1)
+          VERSION_DATA=$(curl -s $PACKAGE_URL)
           SERVER_URL=$(echo "$VERSION_DATA" | grep -o 'https://piston-data.mojang.com/v1/objects/[^"]*/server.jar')
           echo "Downloading server.jar..."
           curl -o server.jar "$SERVER_URL"
