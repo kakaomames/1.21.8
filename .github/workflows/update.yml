@@ -40,7 +40,7 @@ jobs:
           
           # 値が変わったときにログに出す（隊員のこだわり！）
           
-          missionLog "ACTION" "curlコマンドを実行し、version_manifest.jsonを更新しました！"
+          echo "[ACTION] curlコマンドを実行し、version_manifest.jsonを更新しました！"
           
 
       - name:
