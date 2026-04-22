@@ -1,0 +1,46 @@
+name: Data Update Workflow
+
+on:
+  push:
+    branches: [ "main" ]
+  schedule:
+    # 毎日 0:00 (UTC) に定期実行する場合
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 手動実行も可能にします
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    # 書き込み権限を明示的に付与します
+    permissions:
+      contents: write
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: 外部データを取得 (curl実行)
+        run: |
+          # ここでcurlコマンドを実行
+          # 例: APIの結果を data.json に保存
+          curl -s https://launchermeta.mojang.com/mc/game/version_manifest.json -o version_manifest.json
+          
+          # 値が変わったときにログに出す（隊員のこだわり！）
+          missionLog "ACTION" "curlコマンドを実行し、version_manifest.jsonを更新しました！"
+
+      - name: 変更をコミットしてPush
+        run: |
+          # Gitのユーザー設定（Action用）
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          # 変更があるか確認
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "chore: データを自動更新 [skip ci]"
+            git push
+            echo "missionLog: 値が変更されたため、GitHubへPushを完了しました！ ✅"
+          else
+            echo "missionLog: 変更がなかったため、Pushをスキップします。 😴"
+          fi
