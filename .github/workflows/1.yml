@@ -49,8 +49,15 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git pull origin main --rebase
-          
+
+          # 1. 一旦、今ある変更（ダウンロードしたファイル）を全部ステージング（仮登録）する
+          git add .
+
+          # 2. その状態で pull --rebase を実行（これで衝突を回避）
+          # もし競合しても、Actions側の変更を優先的に合体させる
+          git pull origin main --rebase -X theirs
+
+          # 3. 再度すべてをaddして、変更があるか確認
           if [ -n "$(git status --porcelain)" ]; then
             git add .
             git commit -m "chore: 環境データをフル更新 (Jar & Libraries) [skip ci]"
