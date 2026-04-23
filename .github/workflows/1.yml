@@ -1,0 +1,61 @@
+name: Full Minecraft Environment Installer
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: クライアント・サーバー・ライブラリの全取得
+        run: |
+          # 1. マニフェストとパッケージ情報の取得
+          curl -s https://launchermeta.mojang.com/mc/game/version_manifest.json -o version_manifest.json
+          PACKAGE_URL=$(grep -o 'https://piston-meta.mojang.com/v1/packages/[^"]*' version_manifest.json | head -n 1)
+          VERSION_DATA=$(curl -s $PACKAGE_URL)
+          echo "$VERSION_DATA" > version_details.json
+
+          # 2. 本体(Jar)のダウンロード
+          CLIENT_URL=$(echo "$VERSION_DATA" | grep -o 'https://piston-data.mojang.com/v1/objects/[^"]*/client.jar')
+          SERVER_URL=$(echo "$VERSION_DATA" | grep -o 'https://piston-data.mojang.com/v1/objects/[^"]*/server.jar')
+          curl -L -o client.jar "$CLIENT_URL"
+          curl -L -o server.jar "$SERVER_URL"
+
+          # 3. ライブラリ軍団のダウンロード (librariesフォルダに集結)
+          mkdir -p libraries
+          echo "Starting library deployment..."
+          
+          # JSONからURLを抽出して一気にcurl (jqがないのでgrep/sedで強引に解析)
+          # "url": "https://..." の形式をすべて抜き出してダウンロード
+          echo "$VERSION_DATA" | grep -o 'https://libraries.minecraft.net/[^"]*' | while read -r url; do
+            filename=$(basename "$url")
+            if [ ! -f "libraries/$filename" ]; then
+              echo "Installing $filename..."
+              curl -sL -o "libraries/$filename" "$url"
+            fi
+          done
+
+          echo "missionLog: すべてのライブラリ（.jar）を確保しました！ ✅"
+
+      - name: 変更をコミットしてPush
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git pull origin main --rebase
+          
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "chore: 環境データをフル更新 (Jar & Libraries) [skip ci]"
+            git push origin main
+            echo "missionLog: 全物資のGitHub配備を完了しました！ ✨"
+          else
+            echo "missionLog: 更新なし、待機します。 😴"
+          fi
