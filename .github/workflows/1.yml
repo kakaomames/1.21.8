@@ -45,6 +45,60 @@ jobs:
 
           echo "missionLog: すべてのライブラリ（.jar）を確保しました！ ✅"
 
+      - name: Assetsの解析と全ダウンロード
+        shell: python
+        run: |
+          import os, json, urllib.request
+
+          # 1. バージョン詳細からAssetIndexのURLを取得
+          with open('version_details.json', 'r') as f:
+              details = json.load(f)
+          
+          asset_index_info = details['assetIndex']
+          index_url = asset_index_info['url']
+          index_id = asset_index_info['id'] # 例: "1.21"
+
+          # 2. インデックスファイル（地図）を保存
+          os.makedirs(f'assets/indexes', exist_ok=True)
+          urllib.request.urlretrieve(index_url, f'assets/indexes/{index_id}.json')
+          
+          with open(f'assets/indexes/{index_id}.json', 'r') as f:
+              index_data = json.load(f)
+
+          # 3. オブジェクトをダウンロード (ハッシュ値を元に取得)
+          # ※数が多いので、主要なもの、あるいは最初の100個に制限することも可能ですが、
+          # 今回は全取得を試みます（容量注意！）
+          os.makedirs('assets/objects', exist_ok=True)
+          objects = index_data.get('objects', {})
+          
+          print(f"Total assets to download: {len(objects)}")
+          
+          count = 0
+          for name, info in objects.items():
+              hash_val = info['hash']
+              path = f"{hash_val[:2]}/{hash_val}"
+              url = f"https://resources.download.minecraft.net/{path}"
+              
+              target_dir = os.path.join('assets/objects', hash_val[:2])
+              os.makedirs(target_dir, exist_ok=True)
+              
+              target_path = os.path.join(target_dir, hash_val)
+              if not os.path.exists(target_path):
+                  try:
+                      urllib.request.urlretrieve(url, target_path)
+                      count += 1
+                      if count % 100 == 0: print(f"Downloaded {count} assets...")
+                  except:
+                      print(f"Failed to download: {name}")
+
+          print(f"Mission Log: Assets deployment completed! ({count} files)")
+
+      - name: PythonでAssetsも90MBずつパッキング
+        shell: python
+        run: |
+          print(" ※前のステップのパッキング処理に 'assets' フォルダも含めるように拡張")
+          print("ファイル数が膨大になるため、zip名に 'assets_part' を付けるのがお勧め")
+
       - name: Pythonでライブラリを90MBずつパッキング
         shell: python
         run: |
