@@ -80,15 +80,23 @@ jobs:
       - name: 変更をコミットしてPush
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          
-          # 巨大な元ファイルを消して、新しい分割ZIPをadd
+          git config --local user.name "kakao[bot]"
+
+          # 1. まずは新しい分割ZIPなどをすべてステージング
           rm -f lib.zip
-          git add lib_part*.zip version_manifest.json client.jar server.jar
-          
-          git pull origin main --rebase
+          git add lib_part*.zip version_manifest.json client.jar server.jar 2>/dev/null || true
+
+          # 2. 変更がある場合のみ、一旦「ローカルコミット」を完了させる
           if [ -n "$(git status --porcelain)" ]; then
             git commit -m "chore: ライブラリを90MBずつパッキングして更新 [skip ci]"
+            
+            # 3. コミットした後に rebase して、GitHub上の最新履歴と繋げる
+            # 競合（Conflict）した場合は、このActionsで作ったファイルを優先
+            git pull origin main --rebase -X theirs
+
+            # 4. 最後にまとめてPush
             git push origin main
-            echo "missionLog: 分割パッキング作戦、成功しました！ ✅"
+            echo "missionLog: 分割パッキング作戦、GitHubへのPushに成功しました！ ✅"
+          else
+            echo "missionLog: 更新が必要なファイルがありませんでした。 😴"
           fi
