@@ -58,14 +58,17 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          # 1. 一旦、今ある変更（ダウンロードしたファイル）を全部ステージング（仮登録）する
-          git add .
+          # 1. ダウンロードしたファイルを一時的に「避難」させる
+          git stash -u
 
-          # 2. その状態で pull --rebase を実行（これで衝突を回避）
-          # もし競合しても、Actions側の変更を優先的に合体させる
-          git pull origin main --rebase -X theirs
+          # 2. まっさらな状態で最新のmainを取り込む
+          git pull origin main --rebase
 
-          # 3. 再度すべてをaddして、変更があるか確認
+          # 3. 避難させたファイルを「復元」する
+          # ここで衝突が起きても強引に上書きできるようにする
+          git stash pop || echo "Conflict occurred, but we will handle it with git add."
+
+          # 4. 全てをaddしてコミット
           if [ -n "$(git status --porcelain)" ]; then
             git add .
             git commit -m "chore: 環境データをフル更新 (Jar & Libraries) [skip ci]"
