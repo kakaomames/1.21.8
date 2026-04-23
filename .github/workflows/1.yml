@@ -45,35 +45,50 @@ jobs:
 
           echo "missionLog: すべてのライブラリ（.jar）を確保しました！ ✅"
 
-      - name: ライブラリをzipに固める
+      - name: Pythonでライブラリを90MBずつパッキング
+        shell: python
         run: |
-          echo "Zipping libraries..."
-          zip -r lib.zip libraries/
-          # 元のフォルダはGitに入れたくないなら消してもOK（zipだけ管理）
-          # rm -rf libraries/
-          echo "missionLog: lib.zip の生成が完了しました！ 🤐"
+          import os
+          import zipfile
+
+          lib_dir = 'libraries'
+          max_size = 90 * 1024 * 1024  # 90MB
+          
+          files = [os.path.join(lib_dir, f) for f in os.listdir(lib_dir) if os.path.isfile(os.path.join(lib_dir, f))]
+          
+          current_zip_idx = 1
+          current_zip_size = 0
+          current_zip = zipfile.ZipFile(f'lib_part{current_zip_idx}.zip', 'w', zipfile.ZIP_DEFLATED)
+
+          for file in files:
+              f_size = os.path.getsize(file)
+              
+              # もし次のファイルを足すと90MBを超えるなら、新しいZIPへ
+              if current_zip_size + f_size > max_size:
+                  current_zip.close()
+                  print(f'Finished lib_part{current_zip_idx}.zip (Size: {current_zip_size // 1024 // 1024}MB)')
+                  current_zip_idx += 1
+                  current_zip_size = 0
+                  current_zip = zipfile.ZipFile(f'lib_part{current_zip_idx}.zip', 'w', zipfile.ZIP_DEFLATED)
+              
+              current_zip.write(file, os.path.basename(file))
+              current_zip_size += f_size
+          
+          current_zip.close()
+          print(f'Finished final lib_part{current_zip_idx}.zip (Size: {current_zip_size // 1024 // 1024}MB)')
 
       - name: 変更をコミットしてPush
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-
-          # 1. ダウンロードしたファイルを一時的に「避難」させる
-          git stash -u
-
-          # 2. まっさらな状態で最新のmainを取り込む
+          
+          # 巨大な元ファイルを消して、新しい分割ZIPをadd
+          rm -f lib.zip
+          git add lib_part*.zip version_manifest.json client.jar server.jar
+          
           git pull origin main --rebase
-
-          # 3. 避難させたファイルを「復元」する
-          # ここで衝突が起きても強引に上書きできるようにする
-          git stash pop || echo "Conflict occurred, but we will handle it with git add."
-
-          # 4. 全てをaddしてコミット
           if [ -n "$(git status --porcelain)" ]; then
-            git add .
-            git commit -m "chore: 環境データをフル更新 (Jar & Libraries) [skip ci]"
+            git commit -m "chore: ライブラリを90MBずつパッキングして更新 [skip ci]"
             git push origin main
-            echo "missionLog: 全物資のGitHub配備を完了しました！ ✨"
-          else
-            echo "missionLog: 更新なし、待機します。 😴"
+            echo "missionLog: 分割パッキング作戦、成功しました！ ✅"
           fi
