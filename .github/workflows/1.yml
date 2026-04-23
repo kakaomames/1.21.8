@@ -45,6 +45,14 @@ jobs:
 
           echo "missionLog: すべてのライブラリ（.jar）を確保しました！ ✅"
 
+      - name: ライブラリをzipに固める
+        run: |
+          echo "Zipping libraries..."
+          zip -r lib.zip libraries/
+          # 元のフォルダはGitに入れたくないなら消してもOK（zipだけ管理）
+          # rm -rf libraries/
+          echo "missionLog: lib.zip の生成が完了しました！ 🤐"
+
       - name: 変更をコミットしてPush
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
