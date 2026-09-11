@@ -1,1 +1,1 @@
-https://piston-data.mojang.com/v1/objects/50c9b4d653476352609b6a0e052fb203323220fa/client.jar
+https://piston-data.mojang.com/v1/objects/a64d116707456e8c6069776a558936d11a2674e1/client.jar
